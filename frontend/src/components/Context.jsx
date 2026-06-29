@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { marked } from 'marked';
+
+marked.setOptions({ breaks: true, gfm: true });
 
 const SECTIONS = [
   'Identity & Metadata', 'Active Threads', 'Ecological Records',
@@ -17,6 +20,11 @@ export default function Context({ showToast }) {
   const [contexts, setContexts] = useState([]);
   const [activeFile, setActiveFile] = useState('');
   const [current, setCurrent] = useState(null);
+  const [viewMode, setViewMode] = useState('rendered');
+  const [editContent, setEditContent] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
   const [showNewForm, setShowNewForm] = useState(false);
   const [showAppendForm, setShowAppendForm] = useState(false);
   const [newName, setNewName] = useState('');
@@ -25,7 +33,6 @@ export default function Context({ showToast }) {
   const [creating, setCreating] = useState(false);
   const [log, setLog] = useState([]);
 
-  // Append entry form state
   const [appendContent, setAppendContent] = useState('');
   const [appendTag, setAppendTag] = useState('[ORAL]');
   const [appendContributor, setAppendContributor] = useState('');
@@ -36,7 +43,8 @@ export default function Context({ showToast }) {
   const [appendNote, setAppendNote] = useState('');
   const [appending, setAppending] = useState(false);
 
-  const displayRef = React.useRef(null);
+  const renderedRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const fetchAll = async () => {
     try {
@@ -49,17 +57,35 @@ export default function Context({ showToast }) {
       setCurrent(cur);
       setActiveFile(cur?.filename || '');
       setLog(await logRes.json());
+      if (!dirty) setEditContent(cur?.content || '');
     } catch {}
   };
 
   useEffect(() => { fetchAll(); }, []);
 
+  useEffect(() => {
+    if (current?.content && !dirty) setEditContent(current.content);
+  }, [current]);
+
+  const renderedHtml = useMemo(() => {
+    try { return marked(editContent || ''); } catch { return ''; }
+  }, [editContent]);
+
   const handleSwitchContext = async (filename) => {
     if (!filename) return;
+    if (dirty) {
+      const ok = window.confirm('You have unsaved edits. Discard and switch?');
+      if (!ok) return;
+    }
     try {
       const res = await fetch(`/contexts/${filename}`);
       const data = await res.json();
-      if (data.content) { setCurrent(data); setActiveFile(filename); }
+      if (data.content) {
+        setCurrent(data);
+        setActiveFile(filename);
+        setEditContent(data.content);
+        setDirty(false);
+      }
     } catch {}
   };
 
@@ -77,6 +103,7 @@ export default function Context({ showToast }) {
         showToast(`✓ Context "${newName}" created. Session reset.`);
         setShowNewForm(false);
         setNewName(''); setNewDesc('');
+        setDirty(false);
         fetchAll();
       }
     } catch {}
@@ -84,15 +111,43 @@ export default function Context({ showToast }) {
   };
 
   const handleCopyFull = async () => {
-    if (!current?.content) return;
-    const text = current.content;
+    const text = editContent;
+    if (!text) return;
     await fetch('/clipboard/copy-text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, label: `Full Context: ${current.filename}` })
+      body: JSON.stringify({ text, label: `Full Context: ${activeFile}` })
     });
     const ok = await copyToOS(text);
     showToast(ok ? 'Full context copied to OS clipboard & buffer.' : 'Full context copied to buffer.');
+  };
+
+  const handleSave = async () => {
+    if (!activeFile || !editContent) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/contexts/${activeFile}/save`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDirty(false);
+        setCurrent(c => ({ ...c, content: editContent }));
+        showToast('✓ Saved to disk.');
+      } else {
+        showToast('Save failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch {
+      showToast('Save failed.');
+    }
+    setSaving(false);
+  };
+
+  const handleEditChange = (val) => {
+    setEditContent(val);
+    setDirty(val !== (current?.content || ''));
   };
 
   const handleAppendEntry = async () => {
@@ -119,6 +174,7 @@ export default function Context({ showToast }) {
         setAppendContent(''); setAppendContributor(''); setAppendNote('');
         setAppendSensitive(false);
         setShowAppendForm(false);
+        setDirty(false);
         fetchAll();
       }
     } catch {}
@@ -126,13 +182,23 @@ export default function Context({ showToast }) {
   };
 
   const jumpToSection = (section) => {
-    if (!displayRef.current) return;
-    const text = displayRef.current.innerText || displayRef.current.textContent;
-    const idx = (current?.content || '').indexOf(`## ${section}`);
-    if (idx === -1) return;
-    // Scroll proportionally
-    const ratio = idx / (current.content.length || 1);
-    displayRef.current.scrollTop = ratio * displayRef.current.scrollHeight;
+    const marker = `## ${section}`;
+    if (viewMode === 'edit' && textareaRef.current) {
+      const idx = editContent.indexOf(marker);
+      if (idx === -1) return;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(idx, idx + marker.length);
+      const ratio = idx / (editContent.length || 1);
+      textareaRef.current.scrollTop = ratio * textareaRef.current.scrollHeight;
+    } else if (renderedRef.current) {
+      const headings = renderedRef.current.querySelectorAll('h2');
+      for (const h of headings) {
+        if (h.textContent.includes(section)) {
+          h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          break;
+        }
+      }
+    }
   };
 
   const extractVersion = (content) => {
@@ -146,8 +212,8 @@ export default function Context({ showToast }) {
   };
 
   const lastEntry = [...log].reverse().find(m => m.type === 'proposed_entry' && m.status === 'confirmed');
-  const version = extractVersion(current?.content);
-  const lastUpdated = extractLastUpdated(current?.content);
+  const version = extractVersion(editContent);
+  const lastUpdated = extractLastUpdated(editContent);
 
   return (
     <div>
@@ -163,7 +229,7 @@ export default function Context({ showToast }) {
         <button className="btn btn-primary btn-sm" onClick={() => { setShowNewForm(v => !v); setShowAppendForm(false); }}>+ New Context</button>
         <button className="btn btn-secondary btn-sm" onClick={() => { setShowAppendForm(v => !v); setShowNewForm(false); }}>+ Append Entry</button>
         <button className="btn btn-secondary btn-sm" onClick={fetchAll}>↻</button>
-        <button className="btn btn-secondary btn-sm" onClick={handleCopyFull}>Copy Full Context</button>
+        <button className="btn btn-secondary btn-sm" onClick={handleCopyFull}>Copy Full</button>
       </div>
 
       {/* New context form */}
@@ -251,7 +317,7 @@ export default function Context({ showToast }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary btn-sm" onClick={handleAppendEntry} disabled={appending || !appendContent.trim()}
-              style={{ background: '#1e6a3a', borderColor: '#1e6a3a' }}>
+              style={{ background: '#1e6a3a' }}>
               {appending ? 'Writing…' : '✓ Write to Context'}
             </button>
             <button className="btn btn-secondary btn-sm" onClick={() => setShowAppendForm(false)}>Cancel</button>
@@ -260,7 +326,7 @@ export default function Context({ showToast }) {
       )}
 
       {/* Section navigator */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
         {SECTIONS.map(s => (
           <button key={s} className="btn btn-secondary btn-sm"
             style={{ fontSize: 10, padding: '3px 8px' }}
@@ -270,20 +336,79 @@ export default function Context({ showToast }) {
         ))}
       </div>
 
-      {/* Context display header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>{current?.filename || 'No active context'}</div>
-        <div style={{ fontSize: 10, color: 'rgba(26,15,10,0.4)', display: 'flex', gap: 10 }}>
-          {version && <span>v{version}</span>}
-          {lastUpdated && <span>Updated {lastUpdated}</span>}
+      {/* Viewer header + toggle */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="section-title" style={{ marginBottom: 0 }}>{activeFile || 'No active context'}</span>
+          {version && <span className="badge badge-blue" style={{ fontSize: 10 }}>v{version}</span>}
+          {lastUpdated && <span style={{ fontSize: 10, color: 'rgba(26,15,10,0.4)' }}>· Updated {lastUpdated}</span>}
+          {dirty && <span style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 700 }}>● unsaved</span>}
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {/* View / Edit toggle */}
+          <div style={{ display: 'flex', background: 'rgba(200,97,74,0.1)', borderRadius: 6, padding: 2, gap: 2 }}>
+            {[
+              { id: 'rendered', label: '◉ View' },
+              { id: 'edit', label: '✏ Edit' }
+            ].map(mode => (
+              <button key={mode.id} onClick={() => setViewMode(mode.id)}
+                style={{
+                  background: viewMode === mode.id ? 'var(--color-accent)' : 'transparent',
+                  color: viewMode === mode.id ? 'white' : 'rgba(26,15,10,0.5)',
+                  border: 'none', borderRadius: 4,
+                  padding: '4px 14px', fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer', transition: 'all 0.15s'
+                }}>
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Save button — only in edit mode */}
+          {viewMode === 'edit' && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              style={{ opacity: !dirty ? 0.4 : 1 }}
+            >
+              {saving ? 'Saving…' : '💾 Save'}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="context-display" ref={displayRef}>
-        {current?.content || 'Loading…'}
-      </div>
+      {/* Rendered view */}
+      {viewMode === 'rendered' && (
+        <div
+          ref={renderedRef}
+          className="md-rendered"
+          dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        />
+      )}
 
-      {/* Last entry metadata */}
+      {/* Edit view */}
+      {viewMode === 'edit' && (
+        <div style={{ position: 'relative' }}>
+          <textarea
+            ref={textareaRef}
+            value={editContent}
+            onChange={e => handleEditChange(e.target.value)}
+            className="md-editor"
+            spellCheck={false}
+          />
+          <div style={{
+            position: 'absolute', bottom: 10, right: 14,
+            fontSize: 10, color: 'rgba(26,15,10,0.3)',
+            pointerEvents: 'none'
+          }}>
+            {editContent.length.toLocaleString()} chars · {editContent.split('\n').length} lines
+          </div>
+        </div>
+      )}
+
+      {/* Last entry card */}
       <div className="card" style={{ marginTop: 14 }}>
         <div className="section-title" style={{ marginBottom: 8 }}>Last Confirmed Entry</div>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>

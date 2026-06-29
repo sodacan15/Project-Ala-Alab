@@ -181,8 +181,22 @@ function buildCanumayEastSeed() {
   return scaffold('Canumay East', 'Barangay', 'Seed context for Canumay East barangay community memory');
 }
 
+function writeContext(filename, content) {
+  if (!filename || !content) return false;
+  const safe = path.basename(filename);
+  if (!safe.endsWith('.md')) return false;
+  const filepath = path.join(CONTEXTS_DIR, safe);
+  const today = new Date().toISOString().split('T')[0];
+  let updated = content;
+  if (/\*\*Last updated:\*\*/.test(updated)) {
+    updated = updated.replace(/\*\*Last updated:\*\* \S+/, `**Last updated:** ${today}`);
+  }
+  fs.writeFileSync(filepath, updated, 'utf8');
+  return true;
+}
+
 module.exports = {
   listContexts, readContext, readCurrentContext, createContext,
-  appendEntry, appendFormattedEntry, save, ensureSeedContext,
+  appendEntry, appendFormattedEntry, save, writeContext, ensureSeedContext,
   getCurrentContextName, setActiveContext, sanitizeName
 };

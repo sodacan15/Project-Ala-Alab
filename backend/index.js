@@ -188,6 +188,14 @@ app.get('/contexts/:name', (req, res) => {
   res.json({ filename: req.params.name, content });
 });
 
+app.put('/contexts/:name/save', (req, res) => {
+  const { content } = req.body;
+  if (!content) return res.status(400).json({ error: 'Content required' });
+  const ok = contextFileManager.writeContext(req.params.name, content);
+  if (!ok) return res.status(400).json({ error: 'Invalid filename' });
+  res.json({ success: true });
+});
+
 // ─── Indexer Routes ───────────────────────────────────────────────────────────
 app.get('/indexer', (req, res) => {
   res.json(indexer.getAll());
