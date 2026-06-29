@@ -19,7 +19,7 @@ export default function Login({ onLogin }) {
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
           <button className="btn btn-primary login-btn" onClick={() => onLogin('google')}>
-            Continue as Google User
+            Enter as Logged-in User
           </button>
           <button className="btn btn-primary login-btn" onClick={() => onLogin('guest')}>
             Continue as Guest
