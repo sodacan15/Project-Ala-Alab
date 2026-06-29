@@ -44,9 +44,10 @@ function confirm(id) {
   if (!msg) return { success: false, error: 'Message not found' };
 
   // POOF protocol: proposed_entry and context_update → write to context.md
+  let writtenToContext = false;
   if ((msg.type === 'proposed_entry' || msg.type === 'context_update') && msg.payload?.content) {
     const section = sectionFromTag(msg.payload.source_tag, msg.payload.section);
-    contextFileManager.appendFormattedEntry({
+    writtenToContext = contextFileManager.appendFormattedEntry({
       content: msg.payload.content,
       sourceTag: msg.payload.source_tag || '[ORAL]',
       contributor: msg.payload.contributor || 'User',
@@ -59,7 +60,7 @@ function confirm(id) {
     });
   }
 
-  return { success: true, message: msg };
+  return { success: true, message: msg, writtenToContext };
 }
 
 function sectionFromTag(tag, explicit) {

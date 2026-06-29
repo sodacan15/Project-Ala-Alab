@@ -1,0 +1,1 @@
+- [Ala-Alab Architecture](ala-alab-arch.md) — clipboard orchestration system; user is the Bridge; no AI SDKs; POOF protocol confirmed and working

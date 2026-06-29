@@ -56,6 +56,11 @@ app.post('/bridge/purge/:id', (req, res) => {
   res.json(result);
 });
 
+app.post('/bridge/purge-all', (req, res) => {
+  const result = bridge.purgeAllTransit(req.body.reason);
+  res.json(result);
+});
+
 app.get('/bridge/log', (req, res) => {
   res.json(bridge.getMessageLog());
 });
@@ -147,6 +152,13 @@ app.post('/contexts/update', (req, res) => {
   const { entry, category } = req.body;
   if (!entry) return res.status(400).json({ error: 'Entry required' });
   const ok = contextFileManager.appendEntry(entry, category);
+  res.json({ success: ok });
+});
+
+app.post('/contexts/append-entry', (req, res) => {
+  const { content, sourceTag, contributor, dateOfObservation, significance, sensitive, section, note } = req.body;
+  if (!content) return res.status(400).json({ error: 'Content required' });
+  const ok = contextFileManager.appendFormattedEntry({ content, sourceTag, contributor, dateOfObservation, significance, sensitive, section, note });
   res.json({ success: ok });
 });
 
