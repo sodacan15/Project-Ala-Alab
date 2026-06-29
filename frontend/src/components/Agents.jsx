@@ -70,7 +70,6 @@ export default function Agents({ showToast }) {
   const [transit, setTransit] = useState([]);
   const [clipboard, setClipboard] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [auditView, setAuditView] = useState('conversation');
   const threadRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -587,42 +586,30 @@ export default function Agents({ showToast }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div className="audit-title" style={{ marginBottom: 0 }}>[AUDITING]</div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: 2 }}>
-                  {['conversation', 'pending'].map(v => (
-                    <button key={v} onClick={() => setAuditView(v)}
-                      style={{
-                        background: auditView === v ? 'var(--color-accent)' : 'rgba(255,255,255,0.06)',
-                        color: auditView === v ? 'white' : 'rgba(245,240,232,0.5)',
-                        border: 'none', borderRadius: 4, padding: '3px 9px', fontSize: 9,
-                        fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', cursor: 'pointer'
-                      }}>
-                      {v === 'conversation' ? 'Full Thread' : `Pending${transit.length > 0 ? ` (${transit.length})` : ''}`}
-                    </button>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {transit.length > 0 && (
+                    <>
+                      <span style={{ background: 'rgba(232,150,122,0.2)', color: 'var(--color-accent)', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, letterSpacing: 0.8 }}>
+                        {transit.length} AWAITING DECISION
+                      </span>
+                      <button style={{ background: '#6a2a2a', color: 'rgba(245,240,232,0.7)', border: 'none', borderRadius: 4, padding: '3px 9px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}
+                        onClick={handlePurgeAll}>Purge All</button>
+                    </>
+                  )}
+                  {transit.length === 0 && (
+                    <span style={{ fontSize: 9, color: 'rgba(245,240,232,0.25)', letterSpacing: 0.5 }}>All clear</span>
+                  )}
                 </div>
-                {transit.length > 0 && (
-                  <button className="btn btn-sm" style={{ background: '#6a2a2a', color: 'white', borderRadius: 4, fontSize: 9 }}
-                    onClick={handlePurgeAll}>Purge All</button>
-                )}
               </div>
             </div>
 
-            {auditView === 'conversation' ? (
-              <ConversationThread
-                messages={allMessages}
-                transitIds={transitIds}
-                onCopy={handleCopy}
-                onConfirm={handleConfirm}
-                onReject={handleReject}
-              />
-            ) : (
-              <PendingList
-                transit={transit}
-                onCopy={handleCopy}
-                onConfirm={handleConfirm}
-                onReject={handleReject}
-              />
-            )}
+            <ConversationThread
+              messages={allMessages}
+              transitIds={transitIds}
+              onCopy={handleCopy}
+              onConfirm={handleConfirm}
+              onReject={handleReject}
+            />
           </div>
         </div>
       </div>
@@ -786,31 +773,49 @@ function ConversationThread({ messages, transitIds, onCopy, onConfirm, onReject 
                 </div>
               )}
 
-              {/* Pending actions */}
+                {/* Decision zone — only for pending messages */}
               {isPending && (
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 4 }}>
-                  <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => onCopy(m)}>
-                    📋 Copy
-                  </button>
-                  <button style={{ background: '#1e5a1e', color: 'white', border: 'none', borderRadius: 4, padding: '3px 9px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-                    onClick={() => onConfirm(m.id)}>
-                    ✓ Confirm
-                  </button>
-                  <button style={{ background: '#5a1e1e', color: 'white', border: 'none', borderRadius: 4, padding: '3px 9px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-                    onClick={() => onReject(m.id)}>
-                    ✗ Reject
-                  </button>
-                  {(m.type === 'proposed_entry' || m.type === 'context_update') && (
-                    <span style={{ fontSize: 9, color: 'rgba(232,150,122,0.5)', alignSelf: 'center' }}>
-                      Confirm → writes to context.md
-                    </span>
+                <div style={{
+                  marginTop: 10,
+                  borderTop: '1px solid rgba(232,150,122,0.2)',
+                  paddingTop: 10,
+                }}>
+                  {m.payload?.sensitive && (
+                    <div style={{ background: 'rgba(255,180,50,0.1)', border: '1px solid rgba(255,180,50,0.3)', borderRadius: 5, padding: '5px 9px', fontSize: 10, color: '#e8b050', marginBottom: 8 }}>
+                      ⚠ Sensitive — staged for human review. Confirm only after authorization.
+                    </div>
                   )}
+                  <div style={{ fontSize: 9, color: 'rgba(245,240,232,0.35)', marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                    Your decision
+                    {(m.type === 'proposed_entry' || m.type === 'context_update') && (
+                      <span style={{ marginLeft: 6, color: 'rgba(232,150,122,0.5)' }}>· Confirm writes to context.md</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button onClick={() => onCopy(m)}
+                      style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(245,240,232,0.65)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, padding: '5px 11px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      📋 Copy block
+                    </button>
+                    <button onClick={() => onConfirm(m.id)}
+                      style={{ background: '#1a5c1a', color: '#8ef0a0', border: '1px solid rgba(80,200,100,0.3)', borderRadius: 5, padding: '5px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer', flex: 1 }}>
+                      ✓ Confirm
+                    </button>
+                    <button onClick={() => onReject(m.id)}
+                      style={{ background: '#5c1a1a', color: '#f0a0a0', border: '1px solid rgba(200,80,80,0.3)', borderRadius: 5, padding: '5px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer', flex: 1 }}>
+                      ✗ Reject
+                    </button>
+                  </div>
                 </div>
               )}
 
               {m.status === 'confirmed' && (
-                <div style={{ fontSize: 9, color: '#60d090', marginTop: 4 }}>
-                  ✓ Written to context.md
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(60,200,100,0.15)', fontSize: 9, color: '#60d090', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ✓ Confirmed — written to context.md
+                </div>
+              )}
+              {m.status === 'purged' && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(200,80,80,0.12)', fontSize: 9, color: 'rgba(245,240,232,0.3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ✗ Rejected — removed from transit
                 </div>
               )}
             </div>
