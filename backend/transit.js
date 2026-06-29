@@ -34,28 +34,25 @@ function purgeMessage(id, reason) {
   if (!msg) return null;
   msg.status = 'purged';
   const logEntry = messageLog.find(m => m.id === id);
-  if (logEntry) {
-    logEntry.status = 'purged';
-    logEntry.purgeReason = reason;
-  }
+  if (logEntry) { logEntry.status = 'purged'; logEntry.purgeReason = reason; }
   transitMessages = transitMessages.filter(m => m.id !== id);
   return msg;
 }
 
-function getLog() {
-  return messageLog;
+function purgeAll(reason) {
+  const pending = transitMessages.filter(m => m.status === 'pending');
+  pending.forEach(msg => {
+    msg.status = 'purged';
+    const logEntry = messageLog.find(m => m.id === msg.id);
+    if (logEntry) { logEntry.status = 'purged'; logEntry.purgeReason = reason; }
+  });
+  transitMessages = transitMessages.filter(m => m.status !== 'purged');
+  return pending;
 }
 
-function clearLog() {
-  messageLog = [];
-}
+function getLog() { return messageLog; }
+function clearLog() { messageLog = []; }
+function clearTransit() { transitMessages = []; }
+function getAllTransit() { return transitMessages; }
 
-function clearTransit() {
-  transitMessages = [];
-}
-
-function getAllTransit() {
-  return transitMessages;
-}
-
-module.exports = { addToTransit, getTransit, confirmMessage, purgeMessage, getLog, clearLog, clearTransit, getAllTransit };
+module.exports = { addToTransit, getTransit, confirmMessage, purgeMessage, purgeAll, getLog, clearLog, clearTransit, getAllTransit };
