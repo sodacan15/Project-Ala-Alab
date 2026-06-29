@@ -7,11 +7,11 @@ import Indexer from './components/Indexer.jsx';
 import Settings from './components/Settings.jsx';
 
 const NAV = [
-  { id: 'dashboard', icon: '⊞', label: 'Dashboard' },
-  { id: 'agents', icon: '◈', label: 'Agents' },
-  { id: 'context', icon: '📄', label: 'Context' },
-  { id: 'indexer', icon: '◫', label: 'Indexer' },
-  { id: 'settings', icon: '⚙', label: 'Settings' }
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'agents', label: 'Agents' },
+  { id: 'context', label: 'Context' },
+  { id: 'indexer', label: 'Indexer' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 export default function App() {
@@ -26,18 +26,6 @@ export default function App() {
     const t = setInterval(fetchClipboard, 3000);
     return () => clearInterval(t);
   }, []);
-
-  const checkSession = async () => {
-    try {
-      const res = await fetch('/session/status');
-      const data = await res.json();
-      if (data && data.id) {
-        setSession(data);
-        return true;
-      }
-    } catch (e) {}
-    return false;
-  };
 
   const fetchClipboard = async () => {
     try {
@@ -81,20 +69,26 @@ export default function App() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': return <Dashboard onNavigate={setActivePage} />;
       case 'agents': return <Agents showToast={showToast} />;
       case 'context': return <Context showToast={showToast} />;
       case 'indexer': return <Indexer showToast={showToast} />;
       case 'settings': return <Settings showToast={showToast} onLogout={handleLogout} />;
-      default: return <Dashboard />;
+      default: return <Dashboard onNavigate={setActivePage} />;
     }
   };
 
   return (
     <div className="app-layout">
-      {/* Sidebar */}
       <nav className="sidebar">
-        <div className="sidebar-logo">ALA<br />ALAB</div>
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-mark" />
+          <div className="sidebar-brand-text">
+            <span className="sidebar-brand-project">PROJECT</span>
+            <span className="sidebar-brand-name">ALA-ALAB</span>
+          </div>
+        </div>
+
         <div className="sidebar-nav">
           {NAV.map(item => (
             <button
@@ -102,20 +96,23 @@ export default function App() {
               className={`nav-item ${activePage === item.id ? 'active' : ''}`}
               onClick={() => setActivePage(item.id)}
             >
-              <span className="icon">{item.icon}</span>
               {item.label}
             </button>
           ))}
         </div>
+
+        <button className="nav-logout" onClick={handleLogout}>
+          Logout
+        </button>
       </nav>
 
-      {/* Main area */}
       <div className="main-area">
-        {/* Header */}
         <div className="header">
-          <div className="header-title">PROJECT ALA-ALAB</div>
+          <div className="header-wordmark">
+            <span className="header-project">PROJECT</span>
+            <span className="header-name">ALA-ALAB</span>
+          </div>
           <div className="header-right">
-            <span>SparkFest 2026</span>
             {session && (
               <span className="session-badge">
                 Session: {session.id?.slice(0, 8)}
@@ -124,29 +121,24 @@ export default function App() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="content">
           {renderPage()}
         </div>
 
-        {/* Clipboard status bar */}
         <div className="clipboard-bar">
-          <span className="clip-label">[ CLIPBOARD ]</span>
+          <span className="clip-label">CLIPBOARD</span>
           <span className="clip-content">
             {clipboard
               ? `${clipboard.label} · ${new Date(clipboard.savedAt).toLocaleTimeString()}`
-              : 'Empty — nothing in buffer'}
+              : 'Empty — nothing staged in buffer'}
           </span>
           {clipboard && (
-            <button onClick={() => {
-              setActivePage('agents');
-            }}>View</button>
+            <button onClick={() => setActivePage('agents')}>View</button>
           )}
           <button onClick={handleClearClipboard}>Clear</button>
         </div>
       </div>
 
-      {/* Toast */}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

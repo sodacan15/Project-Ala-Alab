@@ -1,1 +1,2 @@
 - [Ala-Alab Architecture](ala-alab-arch.md) — clipboard orchestration system; user is the Bridge; no AI SDKs; POOF protocol confirmed and working
+- [Ala-Alab Design System](ala-alab-design.md) — UI sketch drives sidebar/header layout; earth tones; professional LGU framing; Settings puts Gemini first with START HERE badge
