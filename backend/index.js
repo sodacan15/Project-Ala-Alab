@@ -224,8 +224,6 @@ function startup() {
     console.log(`Pending transactions detected. Frontend will prompt user.`);
   }
 
-  session.initSession();
-
   app.listen(PORT, 'localhost', () => {
     console.log(`Ala-Alab backend running on port ${PORT}`);
   });

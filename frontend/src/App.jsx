@@ -22,7 +22,6 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    checkSession();
     fetchClipboard();
     const t = setInterval(fetchClipboard, 3000);
     return () => clearInterval(t);
@@ -34,9 +33,10 @@ export default function App() {
       const data = await res.json();
       if (data && data.id) {
         setSession(data);
-        setLoggedIn(true);
+        return true;
       }
     } catch (e) {}
+    return false;
   };
 
   const fetchClipboard = async () => {
@@ -53,14 +53,15 @@ export default function App() {
   };
 
   const handleLogin = async (type) => {
-    if (type === 'settings') {
-      setLoggedIn(true);
-      setActivePage('settings');
-    } else {
-      setLoggedIn(true);
-      setActivePage('dashboard');
-    }
-    await checkSession();
+    const res = await fetch('/session/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (data.session) setSession(data.session);
+    setLoggedIn(true);
+    setActivePage(type === 'settings' ? 'settings' : 'dashboard');
   };
 
   const handleLogout = () => {
