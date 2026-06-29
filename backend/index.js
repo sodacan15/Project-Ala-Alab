@@ -25,12 +25,32 @@ app.use('/storage', express.static(path.join(__dirname, 'storage')));
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const type = req.query.type || 'files';
-    const dirs = { files: 'files', images: 'images' };
+    const dirs = { files: 'files', images: 'images', attachments: 'attachments' };
     cb(null, path.join(__dirname, 'storage', dirs[type] || 'files'));
   },
   filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
-const upload = multer({ storage: fileStorage });
+const upload = multer({ storage: fileStorage, limits: { fileSize: 20 * 1024 * 1024 } });
+
+// ─── Bridge Attachment Upload ─────────────────────────────────────────────────
+const attachStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, path.join(__dirname, 'storage', 'attachments')),
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_'))
+});
+const attachUpload = multer({ storage: attachStorage, limits: { fileSize: 20 * 1024 * 1024 } });
+
+app.post('/bridge/attach', attachUpload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' });
+  const id = uuidv4();
+  res.json({
+    id,
+    filename: req.file.originalname,
+    storedAs: req.file.filename,
+    mimetype: req.file.mimetype,
+    size: req.file.size,
+    url: `/storage/attachments/${req.file.filename}`
+  });
+});
 
 // ─── Bridge Routes ────────────────────────────────────────────────────────────
 app.post('/bridge/send', (req, res) => {
