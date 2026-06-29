@@ -1,6 +1,6 @@
 # Project Ala-Alab — SparkFest 2026 Context
 Living document. Maintained by AI. Curated by user.
-**Version:** 1.5.0 | **Last updated:** 2026-06-29 (rev 6)
+**Version:** 1.6.0 | **Last updated:** 2026-06-30 (rev 7)
 
 ---
 
@@ -122,6 +122,10 @@ Secondary users: city halls that want to gather historical data and form city-le
 > **[ANNOTATION — Jun 28, rev 4]** Valenzuela City publishes yearly ecological reports. These are usable as top-down inputs into the Canumay East context document, cross-referenced against what community members actually observe on the ground. The barangay profile says the Kanumai tree is the landmark. The yearly ecological report may not mention it at all. The user's field walk says it's gone. Ala-Alab holds all three simultaneously and marks the contradiction with an erratum. This is what no single official record does.
 
 **One-sentence architecture statement:** *Official records from the top, living memory from the ground — one document that holds both.*
+
+**One-sentence system framing:** *A local-orchestrated, cloud-leveraged hybrid — the orchestration and data sovereignty live locally; the heavy cognitive compute routes to web-based LLM infrastructure.*
+
+> **[ANNOTATION — Jun 30, rev 7]** Ala-Alab is not a web app and not a pure system app. It is a deliberate hybrid: the React dashboard and bridge script run locally (system-level data sovereignty, POOF protocol, offline file access), while Gemini Flash and Claude handle compute via their public web UIs (zero hosting cost, zero token infrastructure required). The local layer is the authority layer. The cloud layer is the intelligence layer. Neither is optional; neither is primary.
 
 ---
 
@@ -323,13 +327,16 @@ Previously completed projects are banned. The Dredge codebase cannot be resubmit
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| Frontend | React | Already built The Dredge in it — fastest stack for solo builder. Desktop web app. No Flutter. |
-| AI / Conversational Interface | Gemini Flash | Friendly intake, talks to the barangay worker uploading a photo or describing what they witnessed. The face of the system. |
-| AI / Logic & Document Maintenance | Claude (script-assisted) | Maintains the context document, writes structured narrative reports, erratum logic. Not a live API call — a lightweight script automates the paste-and-copy workflow. Sidesteps free plan rate limits entirely. |
+| Frontend | React | Already built The Dredge in it — fastest stack for solo builder. Desktop web app. No Flutter. Command/display wrapper only — not a full web app layer. Handles Audit Gate UI, staging cards, approval/reject flow. |
+| Bridge Script | Local Node.js/Python script | Central orchestrator. Clipboard-based handoff between agents using standardized `[FROM]/[TO]` JSON message format. Decouples agents from each other — neither talks to the other directly. The local customs officer. |
+| Transit Layer | `/transit/` volatile JSON folder | Temporary courier between agent output and `context.md`. JSON is never the canonical record — it is the staging state. Atomic commit: approve → write to `context.md` → POOF (delete JSON). Fail-safe: leftover JSON on startup triggers "Pending transaction — resume or purge?" |
+| AI / Conversational Interface | Gemini Flash | Friendly intake, talks to the barangay worker uploading a photo or describing what they witnessed. The face of the system. Partially denoise raw human input before passing to Claude. |
+| AI / Logic & Document Maintenance | Claude (script-assisted) | Maintains the context document, writes structured narrative reports, erratum logic. Not a live API call — a lightweight script automates the paste-and-copy workflow. Sidesteps free plan rate limits entirely. Cross-references incoming intake against existing erratum log before committing. |
 | AI / App Builder | Replit Agent | Scaffolds and builds the app. User directs, agent codes. Handles heavy lifting so solo builder stays in director seat. |
 | Storage / Backend | Firebase | Free tier, real-time database, handles uploads, hosting provides live deployment URL |
 | Auth | Google Authentication | Login for barangay workers. Low build effort, makes it feel like a real product, additional Google Technology checkbox. |
 | Deployment | Vercel | Live URL for judges. Clean deployment from GitHub. |
+| Packaging (post-MVP) | Tauri (preferred) or Electron | Wraps React frontend + local backend into a standalone `.exe`. Tauri preferred — lighter, Rust backend, superior file management APIs for POOF protocol. Deferred to finals. |
 | Code Editor | VS Code | Review, manual edits, surgical fixes to what Replit Agent produces. |
 | Research Synthesis | NotebookLM | Holds The Dredge as a notebook. Source synthesis and research backing. |
 | Context format | Markdown | Open standard, human + AI readable, portable, the architecture's native format |
@@ -352,6 +359,41 @@ The agents are lean and non-overlapping. Each has a defined role and a defined h
 **Why ChatGPT and Perplexity are excluded:** Both overlap with tools already in the stack. ChatGPT overlaps with Claude. Perplexity overlaps with NotebookLM and Claude web search. In a solo sprint, overlap creates context-switching cost without capability gain. The stack is intentionally lean — every agent has a non-overlapping role.
 
 **Confirmed: 5 agents. No additions needed.**
+
+---
+
+## Denoising Law
+
+**The two-stage filtration pipeline:**
+
+Raw human input is never committed directly to `context.md`. It passes through two sequential denoising stages before touching the canonical record:
+
+1. **Stage 1 — Gemini (Partial Denoise):** Receives raw input (messy field notes, voice transcriptions, oral testimony, photo descriptions). Strips conversational noise, restructures into intake summary. Passes *partially* denoised signal to Claude — does not resolve contradictions, does not decide significance.
+
+2. **Stage 2 — Claude (Cross-Reference + Erratum Check):** Receives Gemini's intake summary. Cross-references against existing erratum log and `context.md`. If the incoming entry contradicts a flagged erratum, the AI is structurally blocked from repeating the same error — the correction is hardcoded into the active context. Only after this check does Claude propose the entry for human confirmation.
+
+**Why this matters:** Without the erratum cross-reference in Stage 2, an AI agent starting a fresh session would confidently re-introduce previously corrected errors. The erratum log is the hallucination-loop breaker. It is not just a historical record — it is an active constraint on future writes.
+
+**Industry parallels (for pitch backing):**
+- Healthcare: Nuance DAX and Abridge strip 20-minute patient conversations to clean clinical notes
+- Legal: e-discovery pipelines denoise deposition transcripts into chronological verified claim timelines
+- Enterprise: Master Data Management (MDM) pipelines deduplicate contradictory records into a single source of truth
+
+Ala-Alab differs from all three: those systems discard the noise. Ala-Alab preserves contradictions as errata — the noise becomes evidence.
+
+---
+
+## Offline Intake Mode — Open Gap
+
+**Status: Flagged as missing. Not yet formalized.**
+
+No protocol currently exists for data capture when internet access is unavailable (typhoon, power outage, remote barangay with no signal). This is a real-world failure mode for the communities Ala-Alab serves.
+
+**Proposed approach (unconfirmed):** Cache intake to a local plain-text or markdown file in the `/transit/` folder. Flag entries as `[OFFLINE — PENDING AGENT PROCESSING]`. Re-engage Gemini/Claude agents when connectivity resumes and run normal pipeline from cached entries.
+
+**Needs:** Formalization, erratum-model compliance check, and human annotation protocol for offline-cached entries.
+
+> **[ANNOTATION — Jun 30, rev 7]** This gap was surfaced during Gemini session Jun 29–30. Barangay-level connectivity is unreliable. The system must not fail silently when agents are unreachable — it must degrade gracefully to local capture mode. Formalizing offline intake is a Day 4 task, not a finals deferral.
 
 **Deferred to finals (if advancing):**
 - BigQuery — search and research layer across accumulated historical records, disease pattern detection across barangays over time
@@ -475,6 +517,7 @@ That's SDG 9, 11, and 16. That's a hackathon pitch. That's a thesis. That's a ca
 - [ ] Finalize all documents
 - [ ] Organize repositories and notebooks
 - [ ] Plan and draft 3-minute video presentation
+- [ ] Formalize offline intake mode protocol
 
 ### Day 5 (Jul 2)
 - [ ] Final simulation and kink fixes
@@ -489,6 +532,18 @@ That's SDG 9, 11, and 16. That's a hackathon pitch. That's a thesis. That's a ca
 ---
 
 ## Errata
+
+### v1.5.0 → v1.6.0 (Jun 30, 2026)
+- Added: Hybrid system framing — Ala-Alab is explicitly a local-orchestrated, cloud-leveraged hybrid. Not a web app. Not a pure system app. Annotation added to "What Ala-Alab Actually Is" section.
+- Added: Bridge Script row to Tech Stack — local orchestrator, clipboard-based, `[FROM]/[TO]` JSON message format, agent decoupling rationale.
+- Added: Transit Layer row to Tech Stack — volatile JSON courier, POOF protocol, atomic commit, fail-safe for crashed commits.
+- Updated: React row in Tech Stack — clarified as command/display wrapper only, Audit Gate UI, staging cards.
+- Updated: Claude row in Tech Stack — added erratum log cross-reference as Stage 2 denoising function.
+- Updated: Gemini Flash row in Tech Stack — added partial denoise role explicit.
+- Added: Tauri/Electron row to Tech Stack — post-MVP packaging target, deferred to finals.
+- Added: Denoising Law section — two-stage filtration pipeline defined. Erratum log named as active hallucination-loop breaker, not just historical record. Industry parallels included for pitch backing.
+- Added: Offline Intake Mode section — flagged as open gap. No protocol yet for connectivity-down data capture. Proposed approach noted. Formalizing moved to Day 4 task list.
+- Confirmed: Audit Gate and Checkpoint Protocol are the same mechanism — terminology unified across documents.
 
 ### v1.0.0 → v1.1.0 (Jun 28, 2026)
 - Added: Core Philosophical Reframe section
