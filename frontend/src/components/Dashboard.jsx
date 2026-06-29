@@ -8,20 +8,41 @@ const AGENT_META = {
 
 const PROTOCOL_STEPS = [
   { id: 1, label: 'Open agent tabs', desc: 'Open Gemini, Claude, NotebookLM in browser' },
-  { id: 2, label: 'Register agents', desc: 'Settings → connect each agent account' },
+  { id: 2, label: 'Inject primer', desc: 'Dashboard → 📋 Copy Primer per agent → paste into each tab' },
   { id: 3, label: 'Submit intake', desc: 'Agents → fill intake form → Send' },
   { id: 4, label: 'Copy → paste to Gemini', desc: 'Copy the formatted block from Auditing panel' },
   { id: 5, label: 'Receive response', desc: '+ Receive Response → paste AI reply → stage' },
   { id: 6, label: 'Confirm → POOF', desc: 'Auditing → Confirm → written to context.md' },
 ];
 
-export default function Dashboard({ onNavigate }) {
+export default function Dashboard({ onNavigate, showToast }) {
   const [accounts, setAccounts] = useState({});
   const [log, setLog] = useState([]);
   const [contexts, setContexts] = useState([]);
   const [transit, setTransit] = useState([]);
   const [session, setSession] = useState(null);
   const [currentCtx, setCurrentCtx] = useState(null);
+  const [primerLoading, setPrimerLoading] = useState({});
+
+  const copyPrimer = async (agentName) => {
+    setPrimerLoading(l => ({ ...l, [agentName]: true }));
+    try {
+      const res = await fetch(`/session/primer/${agentName}`);
+      const data = await res.json();
+      if (data.primer) {
+        await fetch('/clipboard/copy-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: data.primer, label: `Session Primer — ${agentName}` })
+        });
+        try { await navigator.clipboard.writeText(data.primer); } catch {}
+        showToast && showToast(`📋 ${agentName} primer copied — paste into the tab to inject instructions + context.`);
+      }
+    } catch {
+      showToast && showToast('Failed to generate primer.');
+    }
+    setPrimerLoading(l => ({ ...l, [agentName]: false }));
+  };
 
   const fetchAll = async () => {
     try {
@@ -104,6 +125,15 @@ export default function Dashboard({ onNavigate }) {
                     <a href={`https://${meta.tab}`} target="_blank" rel="noreferrer" className="arc-link">
                       ↗ {meta.tab}
                     </a>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginLeft: 'auto', fontSize: 10, padding: '3px 9px', opacity: primerLoading[name] ? 0.6 : 1 }}
+                      onClick={() => copyPrimer(name)}
+                      disabled={primerLoading[name]}
+                      title={`Copy full primer for ${name} — instructions + context.md`}
+                    >
+                      {primerLoading[name] ? '…' : '📋 Copy Primer'}
+                    </button>
                   </div>
                 </div>
               );

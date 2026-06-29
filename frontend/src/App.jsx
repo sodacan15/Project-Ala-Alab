@@ -69,12 +69,12 @@ export default function App() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': return <Dashboard onNavigate={setActivePage} />;
+      case 'dashboard': return <Dashboard onNavigate={setActivePage} showToast={showToast} />;
       case 'agents': return <Agents showToast={showToast} />;
       case 'context': return <Context showToast={showToast} />;
       case 'indexer': return <Indexer showToast={showToast} />;
       case 'settings': return <Settings showToast={showToast} onLogout={handleLogout} />;
-      default: return <Dashboard onNavigate={setActivePage} />;
+      default: return <Dashboard onNavigate={setActivePage} showToast={showToast} />;
     }
   };
 

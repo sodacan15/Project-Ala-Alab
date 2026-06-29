@@ -196,6 +196,59 @@ app.put('/contexts/:name/save', (req, res) => {
   res.json({ success: true });
 });
 
+// ─── Session Primer ───────────────────────────────────────────────────────────
+const AGENT_INSTRUCTION_FILES = {
+  Gemini:     'instruction-gemini.md',
+  Claude:     'instruction-claude.md',
+  NotebookLM: 'instruction-notebooklm.md',
+};
+const GUIDEBOOK_DIR = path.join(__dirname, '..', 'AgentGuidebook');
+const GENERAL_INSTRUCTION_FILE = path.join(GUIDEBOOK_DIR, 'instruction-general.md');
+
+app.get('/session/primer/:agent', (req, res) => {
+  const agentKey = req.params.agent;
+  const instrFile = AGENT_INSTRUCTION_FILES[agentKey];
+  if (!instrFile) return res.status(404).json({ error: 'Unknown agent' });
+
+  try {
+    const instrPath = path.join(GUIDEBOOK_DIR, instrFile);
+    const generalPath = GENERAL_INSTRUCTION_FILE;
+    const instrContent = fs.existsSync(instrPath) ? fs.readFileSync(instrPath, 'utf8') : '';
+    const generalContent = fs.existsSync(generalPath) ? fs.readFileSync(generalPath, 'utf8') : '';
+    const ctx = contextFileManager.readCurrentContext();
+    const contextContent = ctx?.content || '';
+    const contextFile = ctx?.filename || 'context.md';
+
+    const primer = [
+      `# Ala-Alab Session Primer — ${agentKey}`,
+      `# Generated: ${new Date().toISOString()}`,
+      ``,
+      `---`,
+      `## GENERAL PROTOCOL`,
+      ``,
+      generalContent.trim(),
+      ``,
+      `---`,
+      `## YOUR LANE — ${agentKey.toUpperCase()} INSTRUCTIONS`,
+      ``,
+      instrContent.trim(),
+      ``,
+      `---`,
+      `## ACTIVE COMMUNITY MEMORY DOCUMENT (${contextFile})`,
+      ``,
+      contextContent.trim(),
+      ``,
+      `---`,
+      `# END OF PRIMER`,
+      `# You are now loaded. Wait for the first Bridge message.`,
+    ].join('\n');
+
+    res.json({ agent: agentKey, primer, contextFile });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Indexer Routes ───────────────────────────────────────────────────────────
 app.get('/indexer', (req, res) => {
   res.json(indexer.getAll());
