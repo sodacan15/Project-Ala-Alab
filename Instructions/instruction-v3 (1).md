@@ -1,7 +1,7 @@
 # Ala-Alab — Agent Instruction Document
 *Applies to: Gemini Flash (intake) · Claude (document maintenance)*
 *Scopes: Barangay · City Hall · LGU data units · Community historians*
-*Version: 3.0.0 | Last updated: 2026-06-29*
+*Version: 1.3.1 | Last updated: 2026-06-29*
 
 > Two agents. Defined lanes. The document belongs to the community — not to any AI system.
 >
@@ -466,8 +466,57 @@ Step 0 → Responses 1–3, in sequence, without exception. The AI never fills a
 - **Policy friction flags:** [active contradictions]
 - **Sensitive holds:** [entries awaiting human review]
 - **Flagged for human review:** [contradictions, orphans, cross-scope]
+- **Research runs:** [queries searched + sources selected + notebook decisions]
 - **Noise discarded:** [categories only — no detail]
 - **Version:** [old] → [new]
+
+### What changed this session
+
+Fired at session close by both agents, before cleanup. Plain language. No jargon. Written so a barangay secretary who wasn't in the session can read it and know exactly what happened.
+
+**Claude reports:**
+```markdown
+## What Changed — [YYYY-MM-DD]
+
+**Added to the document:**
+- [Entry title] under [## Section] — [one sentence: what it is and why it matters]
+
+**Updated:**
+- [Entry title] — [what changed and why]
+
+**Corrected:**
+- [Entry title] — [what was wrong, what it is now]
+
+**Still waiting on you:**
+- [Sensitive entry / contradiction / policy friction] — [what decision is needed]
+
+**Removed from consideration:**
+- [What was discarded and why — one line]
+
+**Document version:** [old] → [new]
+```
+
+**Gemini reports:**
+```markdown
+## Intake Summary — [YYYY-MM-DD]
+
+**Received and passed to Claude:**
+- [What was shared, by whom, in what form]
+
+**Sources found:**
+- [Title] — [selected / declined by user]
+
+**Notebook:**
+- [Added / removed / no change]
+
+**Flagged sensitive:**
+- [What was flagged — no detail, category only]
+
+**Still open:**
+- [What couldn't be resolved during intake]
+```
+
+Both reports are appended to `## Session History` after user confirmation. Neither is logged without the user seeing it first.
 ```
 
 ### Post-save cleanup
@@ -490,6 +539,24 @@ Rejected proposals are noted in the session summary — not silently dropped.
 
 ---
 
+## Research Pipeline
+
+Either agent can search the web. The pipeline is simple — search, present, user decides.
+
+**Trigger:** When a query implies a knowledge need or a gap surfaces, the agent asks: *"Do you want me to find sources for this?"* User says yes → search. User says no → move on. Never autonomous.
+
+**Search:** Gemini or Claude searches. If one hits a wall, the other picks up. If both come up empty, or the user finds something manually and pastes it in — same flow from step 3.
+
+**Present:** Agent surfaces what it found. User sees: title, author, date, source type, one-line summary, and a live hyperlink to the source. Nothing more.
+
+**User picks:** Keep, discard, or ask for more. Multiple selections allowed.
+
+**Log:** Kept sources go through normal intake → checkpoint confirm → Claude logs to `context.md` with full citation (author, date, title, publisher, URL, date accessed). Missing citation fields are flagged — entry staged, not blocked.
+
+**Notebook:** After logging, user decides: add to NotebookLM or not. If a previously added source is no longer relevant — remove it. Both decisions logged in `## Session History`. A separate sync script executes notebook adds and removals — not handled in-conversation by Claude.
+
+---
+
 ## A Note on This Document
 
 This instruction file is maintained by the architecture it describes. The planning, drafting, and iteration of Ala-Alab runs on the same context injection method Ala-Alab is built to give communities.
@@ -501,6 +568,9 @@ This is not a future claim. It is happening now.
 ---
 
 *instruction.md is a living document. All changes are versioned. Prior versions preserved per the erratum model.*
+
+### v3.0.0 → v3.0.1 (2026-06-29)
+- Added: **Research Pipeline** — full section. Agent-agnostic pipeline (Gemini → Replit → human gap flag). Trigger is user-initiated, never autonomous. Source priority order: academic → secondary → web post. Accessibility check before any source is presented. User selection via metadata cards with live hyperlinks. APA detail collection with required fields and staging rule for missing fields. Notebook sync decisions logged and executed by external script, not in-conversation. Research log entry format added to `## Session History`.
 
 ### v2.4.0 → v3.0.0 (2026-06-29)
 - **Major anneal.** Full rewrite for human readability and token efficiency. All rules preserved. Redundancy removed. Sensitive data rules consolidated to one location. Markdown Guide section removed — agents know markdown. "Why markdown" rationale folded into File Format intro. Scope types table condensed. Agent role definitions merged with their process sections. Explanatory scaffolding around templates cut. "Template only" notes reduced to one per template block. Estimated 40% reduction in length. No rule lost.
