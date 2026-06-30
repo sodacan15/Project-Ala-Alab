@@ -5,6 +5,7 @@ import Agents from './components/Agents.jsx';
 import Context from './components/Context.jsx';
 import Indexer from './components/Indexer.jsx';
 import Settings from './components/Settings.jsx';
+import DockManager from './components/DockManager.jsx';
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -16,12 +17,29 @@ const NAV = [
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
   const [activePage, setActivePage] = useState('dashboard');
   const [session, setSession] = useState(null);
   const [clipboard, setClipboard] = useState(null);
   const [toast, setToast] = useState(null);
+  const [dockEnabled, setDockEnabled] = useState(true);
 
+  // Verify auth on mount
   useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        const res = await fetch('/auth/verify');
+        const data = await res.json();
+        if (data.valid) {
+          setUser(data.user);
+          setLoggedIn(true);
+        }
+      } catch (e) {
+        console.log('Not authenticated');
+      }
+    };
+
+    verifyAuth();
     fetchClipboard();
     const t = setInterval(fetchClipboard, 3000);
     return () => clearInterval(t);
@@ -41,21 +59,25 @@ export default function App() {
   };
 
   const handleLogin = async (type) => {
-    const res = await fetch('/session/new', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    const data = await res.json();
-    if (data.session) setSession(data.session);
-    setLoggedIn(true);
-    setActivePage(type === 'settings' ? 'settings' : 'dashboard');
+    try {
+      const res = await fetch('/auth/oauth-url');
+      const data = await res.json();
+      window.location.href = data.authUrl;
+    } catch (err) {
+      showToast('OAuth error: ' + err.message);
+    }
   };
 
-  const handleLogout = () => {
-    setLoggedIn(false);
-    setActivePage('dashboard');
-    setSession(null);
+  const handleLogout = async () => {
+    try {
+      await fetch('/auth/logout', { method: 'POST' });
+      setLoggedIn(false);
+      setUser(null);
+      setActivePage('dashboard');
+      setSession(null);
+    } catch (err) {
+      showToast('Logout error: ' + err.message);
+    }
   };
 
   const handleClearClipboard = async () => {
@@ -70,16 +92,18 @@ export default function App() {
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard': return <Dashboard onNavigate={setActivePage} showToast={showToast} />;
-      case 'agents': return <Agents showToast={showToast} />;
+      case 'agents': return <Agents showToast={showToast} user={user} />;
       case 'context': return <Context showToast={showToast} />;
       case 'indexer': return <Indexer showToast={showToast} />;
-      case 'settings': return <Settings showToast={showToast} onLogout={handleLogout} />;
+      case 'settings': return <Settings showToast={showToast} onLogout={handleLogout} user={user} />;
       default: return <Dashboard onNavigate={setActivePage} showToast={showToast} />;
     }
   };
 
   return (
     <div className="app-layout">
+      {dockEnabled && <DockManager user={user} />}
+
       <nav className="sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark" />
@@ -101,18 +125,33 @@ export default function App() {
           ))}
         </div>
 
+        <div className="sidebar-dock-toggle">
+          <button
+            className={`dock-toggle-btn ${dockEnabled ? 'enabled' : 'disabled'}`}
+            onClick={() => setDockEnabled(!dockEnabled)}
+            title={dockEnabled ? 'Hide Dock' : 'Show Dock'}
+          >
+            {dockEnabled ? '🔽' : '🔼'} Dock
+          </button>
+        </div>
+
         <button className="nav-logout" onClick={handleLogout}>
           Logout
         </button>
       </nav>
 
-      <div className="main-area">
+      <div className="main-area" style={dockEnabled ? { paddingBottom: '80px' } : {}}>
         <div className="header">
           <div className="header-wordmark">
             <span className="header-project">PROJECT</span>
             <span className="header-name">ALA-ALAB</span>
           </div>
           <div className="header-right">
+            {user && (
+              <span className="user-badge">
+                👤 {user.name || user.email}
+              </span>
+            )}
             {session && (
               <span className="session-badge">
                 Session: {session.id?.slice(0, 8)}

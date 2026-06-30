@@ -1,0 +1,157 @@
+.dock-manager {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.dock-taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, #faf8f6 0%, #f5f0ed 100%);
+  border-top: 2px solid #d4b5a0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 16px;
+  pointer-events: auto;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 98;
+}
+
+.dock-taskbar-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #3d2817;
+  letter-spacing: 1px;
+  padding-right: 12px;
+  border-right: 1px solid #d4b5a0;
+}
+
+.dock-taskbar-agents {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dock-taskbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #c9a88a;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3d2817;
+  transition: all 0.2s ease;
+  pointer-events: auto;
+  position: relative;
+}
+
+.dock-taskbar-btn:hover {
+  background: #f5f0ed;
+  border-color: #8fbfb0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dock-taskbar-btn:active {
+  transform: translateY(0);
+}
+
+.dock-taskbar-btn.active {
+  background: linear-gradient(135deg, #8fbfb0 0%, #6fa89c 100%);
+  color: white;
+  border-color: #6fa89c;
+  box-shadow: 0 4px 12px rgba(143, 191, 176, 0.3);
+}
+
+.dock-taskbar-btn.connected {
+  border-color: #8fbfb0;
+}
+
+.dock-taskbar-btn.connected .dock-taskbar-icon::before {
+  content: '✓';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 10px;
+  color: #4a9d7f;
+  font-weight: 700;
+}
+
+.dock-taskbar-btn.disconnected {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dock-taskbar-btn.disconnected:hover {
+  background: white;
+  border-color: #c9a88a;
+  transform: none;
+}
+
+.dock-taskbar-icon {
+  font-size: 16px;
+  display: inline-block;
+}
+
+.dock-taskbar-label {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-taskbar-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  margin-left: 4px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dock-taskbar {
+    height: 50px;
+    gap: 8px;
+    padding: 0 8px;
+  }
+
+  .dock-taskbar-btn {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .dock-taskbar-label {
+    display: none;
+  }
+
+  .dock-taskbar-icon {
+    font-size: 14px;
+  }
+}
