@@ -1,0 +1,6 @@
+{
+  "name": "LLM Chat Bridge",
+  "description": "A client-side utility to synchronize conversation context between Gemini, Claude, and other AI tools across tabs with instant BroadcastChannel beaming and clean transcript parsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

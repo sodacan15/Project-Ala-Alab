@@ -40,7 +40,7 @@ Confirmed entries → written to context.md (the living community memory documen
 
 **Why human-mediated?** Privacy, auditability, and intentional control. Each message is human-visible before it travels. Nothing is auto-posted. The community retains agency over every record.
 
-### The Three Agents
+### TripleTalk
 
 | Agent | Role | Lane |
 |---|---|---|
@@ -123,7 +123,7 @@ git clone https://github.com/<your-org>/ala-alab.git
 cd ala-alab
 
 # Install backend dependencies
-cd backend && npm install && cd ..
+cd GoogleAiSTUDioOutput1 && npm install && cd ..
 
 # Install frontend dependencies
 cd frontend && npm install && cd ..
@@ -139,17 +139,17 @@ This starts both services in one command:
 
 | Service | Address |
 |---|---|
-| Backend (Express) | `localhost:3001` |
+| GoogleAiSTUDioOutput1 server (Express + Vite middleware) | `localhost:3000` |
 | Frontend (Vite/React) | `localhost:5000` |
 
-Open `localhost:5000` in your browser. Click any login button to enter the workspace.
+Open `localhost:5000` in your browser.
 
 ### What Persists
 
 | Data | Storage |
 |---|---|
-| `context.md` files | `backend/contexts/` (disk) |
-| Uploaded files | `backend/storage/files/`, `images/`, `links/` (disk) |
+| `context.md` files | `GoogleAiSTUDioOutput1/src/contexts/` (disk) |
+| Uploaded files | `GoogleAiSTUDioOutput1/src/storage/files/`, `images/`, `links/`, `attachments/` (disk) |
 | Pending transit messages | In-memory — clears on restart |
 | Clipboard buffer | In-memory — clears on restart |
 
@@ -187,7 +187,7 @@ frontend/
       Indexer.jsx       # Corpus index — ORIGINAL/LINK/IMAGE management
       Settings.jsx      # Agent account registration + protocol guide
 
-AgentGuidebook/
+docs/protocol/
   instruction-v3.0.2.md # Full agent protocol — Gemini, Claude, NotebookLM lanes
 ```
 

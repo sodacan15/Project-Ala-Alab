@@ -1,0 +1,6 @@
+{
+  "name": "Ala-Alab",
+  "description": "Ala-Alab is a living community archive and clipboard orchestration system that aggregates official top-down records and bottom-up community memory using Gemini, Claude, and NotebookLM.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
