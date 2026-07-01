@@ -12,8 +12,8 @@ let agentAccounts: Record<string, AgentAccount> = {
   NotebookLM: { agent: "NotebookLM", connected: false, displayName: "", email: "" }
 };
 
-export function getAccounts(): AgentAccount[] {
-  return Object.values(agentAccounts);
+export function getAccounts(): Record<string, AgentAccount> {
+  return { ...agentAccounts };
 }
 
 export function connectAccount(agent: "Gemini" | "Claude" | "NotebookLM", displayName: string, email: string): AgentAccount {

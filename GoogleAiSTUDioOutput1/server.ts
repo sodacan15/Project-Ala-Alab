@@ -13,7 +13,7 @@ import {
   createContextFile,
   appendEntryToContext,
   CONTEXTS_DIR
-} from "./src/server/contextFileManager";
+} from "./accounts";
 
 import {
   loadIndex,
@@ -21,7 +21,7 @@ import {
   deleteEntry,
   toggleInNotebook,
   STORAGE_DIR
-} from "./src/server/indexer";
+} from "./session";
 
 import {
   getTransitMessages,
@@ -31,13 +31,13 @@ import {
   confirmMessage,
   purgeMessage,
   TransitMessage
-} from "./src/server/transit";
+} from "./types";
 
 import {
   getClipboard,
   setClipboard,
   clearClipboard
-} from "./src/server/clipboard";
+} from "./Login";
 
 import {
   getSessionStatus,
@@ -45,13 +45,13 @@ import {
   endCurrentSession,
   updateAgentState,
   setActiveContext
-} from "./src/server/session";
+} from "./Agents";
 
 import {
   getAccounts,
   connectAccount,
   disconnectAccount
-} from "./src/server/accounts";
+} from "./Dashboard";
 
 const app = express();
 const PORT = 3000;
@@ -85,9 +85,22 @@ const imageStorage = multer.diskStorage({
 const uploadFile = multer({ storage: fileStorage });
 const uploadImage = multer({ storage: imageStorage });
 
-// Serve uploaded files and images statically for UI viewing
+const attachmentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.resolve("./src/storage/attachments"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const uploadAttachment = multer({ storage: attachmentStorage });
+
+// Serve uploaded files, images, and attachments statically for UI viewing
+app.use("/storage", express.static(path.resolve("./src/storage")));
 app.use("/storage/files", express.static(path.resolve("./src/storage/files")));
 app.use("/storage/images", express.static(path.resolve("./src/storage/images")));
+app.use("/storage/attachments", express.static(path.resolve("./src/storage/attachments")));
 
 // --------------------------------------------------------
 // GEMINI API AGENT INITIALIZATION
@@ -203,6 +216,25 @@ app.delete("/api/bridge/log", (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/api/bridge/purge-all", (req, res) => {
+  clearHistory();
+  res.json({ success: true, message: "All transit history cleared." });
+});
+
+app.post("/api/bridge/attach", uploadAttachment.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  const response = {
+    id: `${Date.now()}-${req.file.filename}`,
+    filename: req.file.originalname,
+    mimetype: req.file.mimetype,
+    url: `/storage/attachments/${req.file.filename}`
+  };
+  res.json(response);
+});
+
 // --------------------------------------------------------
 // SESSION ENDPOINTS
 // --------------------------------------------------------
@@ -236,6 +268,25 @@ app.post("/api/session/agent-state", (req, res) => {
   }
   updateAgentState(agent, state);
   res.json(getSessionStatus());
+});
+
+app.get("/api/session/primer/:agent", (req, res) => {
+  const { agent } = req.params;
+  const session = getSessionStatus();
+  const activeContext = session.activeContext || "none";
+  let instructions = "";
+
+  if (agent === "Gemini") {
+    instructions = `You are Gemini Flash. Receive raw intake from the user, structure it, and prepare it for Claude. Never write directly to context.md. Use the active context file for grounding. Active context: ${activeContext}.`;
+  } else if (agent === "Claude") {
+    instructions = `You are Claude. Evaluate incoming structured intake, propose entries, and wait for human confirmation before writing to context.md. Use the active context file for grounding. Active context: ${activeContext}.`;
+  } else if (agent === "NotebookLM") {
+    instructions = `You are NotebookLM. Aggregate corpus references and synthesize findings to support Claude and the human operator. Use the active context file and indexed sources. Active context: ${activeContext}.`;
+  } else {
+    instructions = `Agent primer for ${agent} is not available. Use the active context file and follow the Ala-Alab bridge protocol.`;
+  }
+
+  res.json({ primer: instructions });
 });
 
 // --------------------------------------------------------
@@ -274,11 +325,15 @@ Note: ${message.note || "N/A"}
 });
 
 app.post("/api/clipboard/copy-text", (req, res) => {
-  const { content, type } = req.body;
+  const content = req.body.content ?? req.body.text;
+  const type = req.body.type || req.body.label || "custom_text";
+  if (!content) {
+    return res.status(400).json({ error: "Missing content" });
+  }
   const clipboard = setClipboard(
     content,
     getSessionStatus().sessionId || "no-session",
-    type || "custom_text",
+    type,
     content
   );
   res.json(clipboard);
@@ -301,7 +356,7 @@ app.get("/api/contexts/current", (req, res) => {
   const activeFile = getSessionStatus().activeContext;
   try {
     const markdown = readContextFile(activeFile);
-    res.json({ filename: activeFile, markdown });
+    res.json({ filename: activeFile, markdown, content: markdown });
   } catch (err: any) {
     res.status(404).json({ error: err.message });
   }
@@ -311,9 +366,52 @@ app.get("/api/contexts/:name", (req, res) => {
   const { name } = req.params;
   try {
     const markdown = readContextFile(name);
-    res.json({ filename: name, markdown });
+    res.json({ filename: name, markdown, content: markdown });
   } catch (err: any) {
     res.status(404).json({ error: err.message });
+  }
+});
+
+app.put("/api/contexts/:name/save", (req, res) => {
+  const { name } = req.params;
+  const { content } = req.body;
+  if (!content) {
+    return res.status(400).json({ error: "Missing content" });
+  }
+
+  try {
+    const filePath = path.join(CONTEXTS_DIR, name);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: `Context file ${name} not found` });
+    }
+    let updatedContent = content;
+    const now = new Date().toISOString().split("T")[0];
+    if (/\*\*Last updated:\*\*/.test(content)) {
+      updatedContent = content.replace(/(\*\*Last updated:\*\*)\s*[^\s|]+/g, `$1 ${now}`);
+    }
+    fs.writeFileSync(filePath, updatedContent, "utf-8");
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/contexts/append-entry", (req, res) => {
+  const { content, sourceTag, contributor, dateOfObservation, significance, sensitive, section, note } = req.body;
+  const activeFile = getSessionStatus().activeContext;
+  if (!activeFile) {
+    return res.status(400).json({ error: "No active context file" });
+  }
+  if (!content) {
+    return res.status(400).json({ error: "Missing content" });
+  }
+
+  const entryMarkdown = `#### ${sourceTag || "[ORAL]"} Entry\n- **Date of observation:** ${dateOfObservation || new Date().toISOString().split("T")[0]}\n- **Contributor:** ${contributor || "Anonymous"}\n- **Significance:** ${significance || "Community-relevant"}\n- **Sensitive:** ${sensitive ? "Yes" : "No"}\n- **Note:** ${note || "None"}\n\n${content}`;
+  try {
+    appendEntryToContext(activeFile, section || "Community & Oral History", entryMarkdown);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -432,7 +530,13 @@ app.get("/api/indexer/download/:id", (req, res) => {
 // --------------------------------------------------------
 
 app.get("/api/indexer", (req, res) => {
-  res.json(loadIndex());
+  const entries = loadIndex();
+  const grouped = {
+    ORIGINAL: entries.filter(e => e.type === "ORIGINAL"),
+    LINK: entries.filter(e => e.type === "LINK"),
+    IMAGE: entries.filter(e => e.type === "IMAGE")
+  };
+  res.json(grouped);
 });
 
 app.post("/api/indexer/upload-file", uploadFile.single("file"), (req, res) => {
@@ -490,6 +594,85 @@ app.post("/api/indexer/add-link", (req, res) => {
   res.json(entry);
 });
 
+app.post("/api/indexer/add", (req, res, next) => {
+  const type = String(req.query.type || "").toUpperCase();
+
+  if (type === "ORIGINAL") {
+    uploadFile.single("file")(req, res, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const { addedBy, description } = req.body;
+      const entry = addEntry({
+        type: "ORIGINAL",
+        filename: req.file.originalname,
+        path: `src/storage/files/${req.file.filename}`,
+        addedBy: addedBy || "Operator",
+        description: description || "Uploaded raw source file"
+      } as any);
+      res.json(entry);
+    });
+    return;
+  }
+
+  if (type === "IMAGE") {
+    uploadImage.single("file")(req, res, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+      const { addedBy, caption, linkedEntry } = req.body;
+      const entry = addEntry({
+        type: "IMAGE",
+        filename: req.file.filename,
+        path: `src/storage/images/${req.file.filename}`,
+        metadataFile: "",
+        addedBy: addedBy || "Operator",
+        caption: caption || "No caption provided",
+        linkedEntry: linkedEntry || "None"
+      } as any);
+      res.json(entry);
+    });
+    return;
+  }
+
+  if (type === "LINK") {
+    const { url, title, notes, addedBy } = req.body;
+    if (!url || !title) {
+      return res.status(400).json({ error: "Missing url or title" });
+    }
+    const entry = addEntry({
+      type: "LINK",
+      url,
+      title,
+      dateAccessed: new Date().toISOString().split("T")[0],
+      addedBy: addedBy || "Operator",
+      notes: notes || "No notes provided",
+      generatedFile: ""
+    } as any);
+    res.json(entry);
+    return;
+  }
+
+  res.status(400).json({ error: "Unsupported or missing indexer type" });
+});
+
+app.post("/api/indexer/:id", (req, res) => {
+  try {
+    const { inNotebook } = req.body;
+    const entry = toggleInNotebook(req.params.id);
+    if (typeof inNotebook === "boolean" && entry.inNotebook !== inNotebook) {
+      entry.inNotebook = inNotebook;
+      const allEntries = loadIndex();
+      const idx = allEntries.findIndex(e => e.id === entry.id);
+      if (idx !== -1) {
+        allEntries[idx] = entry;
+        saveIndex(allEntries);
+      }
+    }
+    res.json(entry);
+  } catch (err: any) {
+    res.status(404).json({ error: err.message });
+  }
+});
+
 app.delete("/api/indexer/:id", (req, res) => {
   try {
     deleteEntry(req.params.id);
@@ -531,6 +714,16 @@ app.post("/api/accounts/:agent/connect", (req, res) => {
 });
 
 app.post("/api/accounts/:agent/disconnect", (req, res) => {
+  const { agent } = req.params;
+  try {
+    const acc = disconnectAccount(agent as any);
+    res.json(acc);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete("/api/accounts/:agent/disconnect", (req, res) => {
   const { agent } = req.params;
   try {
     const acc = disconnectAccount(agent as any);

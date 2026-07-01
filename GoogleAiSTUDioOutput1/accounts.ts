@@ -20,7 +20,8 @@ export function ensureDirectories() {
     path.resolve("./src/storage"),
     path.resolve("./src/storage/files"),
     path.resolve("./src/storage/links"),
-    path.resolve("./src/storage/images")
+    path.resolve("./src/storage/images"),
+    path.resolve("./src/storage/attachments")
   ];
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) {
@@ -64,31 +65,10 @@ export function ensureDirectories() {
   }
 }
 
-export function listContexts(): ContextMetadata[] {
+export function listContexts(): string[] {
   ensureDirectories();
   const files = fs.readdirSync(CONTEXTS_DIR).filter(f => f.endsWith(".md"));
-  return files.map(file => {
-    const filePath = path.join(CONTEXTS_DIR, file);
-    const content = fs.readFileSync(filePath, "utf-8");
-    
-    // Parse metadata from top of file
-    const titleMatch = content.match(/^#\s+(.+?)\s+—/m);
-    const scopeMatch = content.match(/^\*\*Scope:\*\*\s*(.+)$/m);
-    const descMatch = content.match(/^\*\*Description:\*\*\s*(.+)$/m);
-    const versionMatch = content.match(/^\*\*Version:\*\*\s*([\d.]+)/m);
-    const createdMatch = content.match(/\*\*Created:\*\*\s*([^\s|]+)/);
-    const updatedMatch = content.match(/\*\*Last updated:\*\*\s*([^\s|]+)/);
-
-    return {
-      name: titleMatch ? titleMatch[1] : file.replace(".md", ""),
-      scope: scopeMatch ? scopeMatch[1] : "Barangay",
-      description: descMatch ? descMatch[1] : "",
-      filename: file,
-      version: versionMatch ? versionMatch[1] : "1.0.0",
-      created: createdMatch ? createdMatch[1] : new Date().toISOString().split("T")[0],
-      lastUpdated: updatedMatch ? updatedMatch[1] : new Date().toISOString().split("T")[0]
-    };
-  });
+  return files;
 }
 
 export function readContextFile(filename: string): string {

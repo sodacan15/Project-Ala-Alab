@@ -24,22 +24,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [dockEnabled, setDockEnabled] = useState(true);
 
-  // Verify auth on mount
   useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        const res = await fetch('/auth/verify');
-        const data = await res.json();
-        if (data.valid) {
-          setUser(data.user);
-          setLoggedIn(true);
-        }
-      } catch (e) {
-        console.log('Not authenticated');
-      }
-    };
-
-    verifyAuth();
     fetchClipboard();
     const t = setInterval(fetchClipboard, 3000);
     return () => clearInterval(t);
@@ -58,26 +43,20 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleLogin = async (type) => {
-    try {
-      const res = await fetch('/auth/oauth-url');
-      const data = await res.json();
-      window.location.href = data.authUrl;
-    } catch (err) {
-      showToast('OAuth error: ' + err.message);
+  const handleLogin = (type) => {
+    const profile = { name: 'Guest Archivist', email: 'guest@ala-alab.local' };
+    setUser(profile);
+    setLoggedIn(true);
+    if (type === 'settings') {
+      setActivePage('settings');
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/auth/logout', { method: 'POST' });
-      setLoggedIn(false);
-      setUser(null);
-      setActivePage('dashboard');
-      setSession(null);
-    } catch (err) {
-      showToast('Logout error: ' + err.message);
-    }
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setUser(null);
+    setActivePage('dashboard');
+    setSession(null);
   };
 
   const handleClearClipboard = async () => {

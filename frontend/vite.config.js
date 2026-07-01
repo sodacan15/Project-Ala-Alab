@@ -8,13 +8,41 @@ export default defineConfig({
     port: 5000,
     allowedHosts: true,
     proxy: {
-      '/bridge': 'http://localhost:3001',
-      '/session': 'http://localhost:3001',
-      '/clipboard': 'http://localhost:3001',
-      '/contexts': 'http://localhost:3001',
-      '/indexer': 'http://localhost:3001',
-      '/accounts': 'http://localhost:3001',
-      '/storage': 'http://localhost:3001'
+      '/bridge': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/bridge/, '/api/bridge')
+      },
+      '/session': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/session/, '/api/session')
+      },
+      '/clipboard': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/clipboard/, '/api/clipboard')
+      },
+      '/contexts': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/contexts/, '/api/contexts')
+      },
+      '/indexer': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/indexer/, '/api/indexer')
+      },
+      '/accounts': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/accounts/, '/api/accounts')
+      },
+      '/storage': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/storage/, '/storage')
+      }
     }
   }
 });

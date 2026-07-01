@@ -1,5 +1,5 @@
 #!/bin/bash
-(cd backend && node index.js) &
+(cd GoogleAiSTUDioOutput1 && npm run dev) &
 BACKEND_PID=$!
 (cd frontend && npm run dev) &
 FRONTEND_PID=$!

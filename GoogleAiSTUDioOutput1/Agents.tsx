@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
-import { getTransitMessages, getFullHistory, clearTransit, clearHistory } from "./transit";
-import { setClipboard } from "./clipboard";
-import { appendSessionHistory } from "./contextFileManager";
-import { resetAccounts } from "./accounts";
+import { getTransitMessages, getFullHistory, clearTransit, clearHistory } from "./types";
+import { setClipboard } from "./Login";
+import { appendSessionHistory } from "./accounts";
+import { resetAccounts } from "./Dashboard";
 
 export interface SessionStatus {
   sessionId: string | null;
