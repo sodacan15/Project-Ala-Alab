@@ -1,0 +1,6 @@
+- [x] Step 0: Connectivity check complete
+- [ ] Step 1: /docs subfolders created
+- [ ] Step 2: Folders moved (or references fixed) into /docs
+- [ ] Step 3: /docs/README.md written
+- [ ] Step 4: root README.md updated
+- [ ] Step 5: local smoke test run
