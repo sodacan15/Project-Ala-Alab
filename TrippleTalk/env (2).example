@@ -1,0 +1,67 @@
+import { PromptTemplate, LayoutPreset } from '../types';
+
+export const DEFAULT_PRESETS: LayoutPreset[] = [
+  {
+    id: 'gemini-notebook',
+    name: 'Gemini + NotebookLM',
+    leftUrl: 'https://gemini.google.com/',
+    rightUrl: 'https://notebooklm.google.com/',
+  },
+  {
+    id: 'chatgpt-claude',
+    name: 'ChatGPT + Claude',
+    leftUrl: 'https://chatgpt.com/',
+    rightUrl: 'https://claude.ai/',
+  },
+  {
+    id: 'scholar-notebook',
+    name: 'Google Scholar + NotebookLM',
+    leftUrl: 'https://scholar.google.com/',
+    rightUrl: 'https://notebooklm.google.com/',
+  },
+  {
+    id: 'wikipedia-gemini',
+    name: 'Wikipedia + Gemini',
+    leftUrl: 'https://en.m.wikipedia.org/',
+    rightUrl: 'https://gemini.google.com/',
+  },
+];
+
+export const DEFAULT_PROMPTS: PromptTemplate[] = [
+  {
+    id: 'p1',
+    title: 'Comprehensive Summary',
+    category: 'Summarize',
+    prompt: 'Summarize the provided content into an organized executive summary. Include: \n1. High-level takeaways\n2. Key supporting details or evidence\n3. Action items or practical implications\n4. Unresolved questions or gaps in the material.',
+  },
+  {
+    id: 'p2',
+    title: 'Analyze & Critique',
+    category: 'Analyze',
+    prompt: 'Analyze the following text critically. Identify: \n1. Core assertions and assumptions\n2. Strongest and weakest arguments\n3. Any logical gaps, inconsistencies, or fallacies\n4. Recommended counterarguments to consider.',
+  },
+  {
+    id: 'p3',
+    title: 'Explain Like I\'m 12',
+    category: 'General',
+    prompt: 'Explain this complex scientific/technical concept in simple terms, as if you are teaching a 12-year-old. Use a vivid, memorable analogy and break down any specialized jargon.',
+  },
+  {
+    id: 'p4',
+    title: 'Synthesize Sources',
+    category: 'Analyze',
+    prompt: 'Compare and contrast the findings of these multiple text snippets. Point out where they agree, where they contradict or diverge, and integrate them into a singular, cohesive narrative synthesis.',
+  },
+  {
+    id: 'p5',
+    title: 'Brainstorm Extensions',
+    category: 'Brainstorm',
+    prompt: 'Based on this information, brainstorm 5 highly creative, non-obvious ideas, projects, or adjacent research questions that we can investigate next. Provide a brief sentence of rationale for each.',
+  },
+  {
+    id: 'p6',
+    title: 'Draft Essay/Memo Outline',
+    category: 'Write',
+    prompt: 'Draft an elegant, structured outline for an essay, article, or business memo based on this research material. Include standard structural headers (Introduction, Body Paragraphs with evidence tags, and Conclusion) with transition prompts.',
+  },
+];

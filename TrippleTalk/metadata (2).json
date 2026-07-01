@@ -1,0 +1,6 @@
+{
+  "name": "Dual-Pane Research Workspace",
+  "description": "A productivity-focused split-screen workspace to run Gemini and NotebookLM side-by-side with shared scratchpads, custom prompt libraries, and browser layout tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
