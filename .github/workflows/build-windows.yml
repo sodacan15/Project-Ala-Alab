@@ -13,30 +13,44 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - name: Install dependencies and build
+
+      - name: Install frontend & build
         run: |
           cd frontend
           npm ci
           npm run build
-          cd ..
+        shell: pwsh
+
+      - name: Install backend deps
+        run: |
           cd backend
           npm ci
-          cd ..
+        shell: pwsh
+
+      - name: Install electron deps
+        run: |
           cd electron
           npm ci
-      - name: Copy frontend build into electron app
+        shell: pwsh
+
+      - name: Copy frontend build into electron app (PowerShell-safe)
         run: |
-          rm -rf electron/dist || true
-          mkdir -p electron/dist
-          cp -R frontend/dist/* electron/dist/
+          Remove-Item -Recurse -Force electron/dist -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path electron/dist | Out-Null
+          Copy-Item -Path ../frontend/dist/* -Destination electron/dist -Recurse -Force
+        shell: pwsh
+          
       - name: Build installer
         run: |
           cd electron
           npx electron-builder --win --x64 --publish never
+        shell: pwsh
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
