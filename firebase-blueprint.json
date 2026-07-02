@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "ErratumRule": {
+      "title": "ErratumRule",
+      "description": "A single validated historical correction correcting official claims",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier code for the erratum"
+        },
+        "officialClaim": {
+          "type": "string",
+          "description": "What official records wrongly claim"
+        },
+        "groundTruth": {
+          "type": "string",
+          "description": "The corrected historical or ecological reality"
+        },
+        "source": {
+          "type": "string",
+          "description": "The fieldwork or primary-source backing proving the truth"
+        }
+      },
+      "required": ["id", "officialClaim", "groundTruth", "source"]
+    },
+    "BarangayContext": {
+      "title": "BarangayContext",
+      "description": "The repository profile context of a single Barangay",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique repository identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Barangay"
+        },
+        "municipality": {
+          "type": "string",
+          "description": "City or Municipality it belongs to"
+        },
+        "established": {
+          "type": "string",
+          "description": "Establishment year or era"
+        },
+        "contextMarkdown": {
+          "type": "string",
+          "description": "Sovereign translocal context document written in Markdown format"
+        },
+        "errataLog": {
+          "type": "array",
+          "description": "Array of Erratum rules validating the context"
+        }
+      },
+      "required": ["id", "name", "municipality", "established", "contextMarkdown", "errataLog"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/repositories/{repositoryId}": {
+      "schema": "BarangayContext",
+      "description": "Canonical translocal historical and ecological context repositories of a researcher"
+    }
+  }
+}

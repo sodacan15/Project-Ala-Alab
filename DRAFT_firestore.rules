@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Definitions & Global Reusable Helpers
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    // Entity-level Validation Blueprint Helpers
+    function isValidErratumRule(rule) {
+      return rule is map &&
+             rule.keys().hasAll(['id', 'officialClaim', 'groundTruth', 'source']) &&
+             rule.keys().size() == 4 &&
+             rule.id is string && rule.id.size() <= 64 &&
+             rule.officialClaim is string && rule.officialClaim.size() <= 10000 &&
+             rule.groundTruth is string && rule.groundTruth.size() <= 10000 &&
+             rule.source is string && rule.source.size() <= 10000;
+    }
+
+    function isValidBarangayContext(data) {
+      return data.keys().hasAll(['id', 'name', 'municipality', 'established', 'contextMarkdown', 'errataLog']) &&
+             data.keys().size() == 6 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 256 &&
+             data.municipality is string && data.municipality.size() <= 256 &&
+             data.established is string && data.established.size() <= 256 &&
+             data.contextMarkdown is string && data.contextMarkdown.size() <= 500000 &&
+             data.errataLog is list && data.errataLog.size() <= 100 &&
+             (data.errataLog.size() == 0 || isValidErratumRule(data.errataLog[0]));
+    }
+
+    // Repository Context Matches
+    match /users/{userId}/repositories/{repositoryId} {
+      
+      // Read Operations
+      allow get: if isOwner(userId) && isValidId(repositoryId);
+      allow list: if isOwner(userId); // list doesn't have repositoryId document variable yet
+
+      // Create Operations (Payload validation first, then check isOwner)
+      allow create: if isOwner(userId) &&
+                       isValidId(repositoryId) &&
+                       isValidBarangayContext(incoming()) &&
+                       incoming().id == repositoryId;
+
+      // Update Operations (Split and verified)
+      allow update: if isOwner(userId) &&
+                       isValidId(repositoryId) &&
+                       isValidBarangayContext(incoming()) &&
+                       incoming().id == existing().id &&
+                       incoming().id == repositoryId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'municipality', 'established', 'contextMarkdown', 'errataLog']);
+
+      // Delete Operations
+      allow delete: if isOwner(userId) && isValidId(repositoryId);
+    }
+  }
+}
